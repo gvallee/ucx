@@ -1114,8 +1114,9 @@ ucp_am_handler_common(ucp_worker_h worker, ucp_am_hdr_t *am_hdr, size_t hdr_size
          * right before the data, where user header resides).
          */
         status = ucp_recv_desc_init(worker, data,
-                                    total_length - hdr_size -
-                                        am_hdr->header_length,
+                                    //total_length - hdr_size -
+                                    //    am_hdr->header_length,
+				    total_length - hdr_size,
                                     0, 0, /* pass as a const */
                                     0, 0, 0, &desc);
         if (ucs_unlikely(UCS_STATUS_IS_ERR(status))) {
