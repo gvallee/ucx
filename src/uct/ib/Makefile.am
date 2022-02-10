@@ -38,7 +38,12 @@ noinst_HEADERS += \
 	mlx5/ib_mlx5.inl \
 	mlx5/dv/ib_mlx5_dv.h \
 	mlx5/dv/ib_mlx5_ifc.h \
-	mlx5/exp/ib_mlx5_hw.h
+	mlx5/exp/ib_mlx5_hw.h \
+	mlx5/exp/ib_exp_xgvmi_mkey.h \
+	mlx5/exp/ib_exp_xgvmi_prm.h \
+	mlx5/exp/ib_exp_xgvmi_utils.h \
+	mlx5/exp/ib_exp_xgvmi_ifc_fpga.h \
+	mlx5/exp/ib_exp_xgvmi_ifc.h
 
 libuct_ib_la_SOURCES += \
 	mlx5/ib_mlx5_log.c \
@@ -51,7 +56,8 @@ noinst_HEADERS += \
 libuct_ib_la_SOURCES += \
 	mlx5/exp/ib_mlx5_hw.c \
 	mlx5/exp/ib_exp.c \
-	mlx5/exp/ib_exp_md.c
+	mlx5/exp/ib_exp_md.c \
+	mlx5/exp/ib_exp_xgvmi.c
 endif # HAVE_EXP
 
 if HAVE_MLX5_DV
