@@ -20,6 +20,8 @@ int
 serialize_desc_data(struct desc_data *data, char* desc_str, size_t desc_length)
 {
 	int ret;
+	int i;
+
 	if (desc_length < BUFF_DESC_STRING_LENGTH) {
 		fprintf(stderr, "desc string size (%lu) is less than required (%lu) for sending cross gvmi attributes\n",
 				desc_length, BUFF_DESC_STRING_LENGTH);
@@ -27,13 +29,12 @@ serialize_desc_data(struct desc_data *data, char* desc_str, size_t desc_length)
 	}
 	/*     vhca_id mkey     buf_addr	 buf_size
 		 "0102:01020304:0102030405060708:01020304:" */
-	ret = sprintf(desc_str, "%04x:%08x:%016llx:%08x:",
+	ret = sprintf(desc_str, "%04x:%08x:%016lx:%08lx:",
 			data->vhca_id,
 			data->mkey,
 			(uint64_t)data->buf,
 			data->buf_size);
 
-	int i;
 	for (i = 0; i < 32; ++i)
 		sprintf(&desc_str[ret + i], "%c", data->access_key[i]);
 
@@ -47,7 +48,7 @@ deserialize_desc_data(const char *str, size_t str_size, struct desc_data *data)
          *vhca_id mkey     buff_addr        buf_size access_key
          *  "0102:01020304:0102030405060708:01020304:0102030405060708090a0b0c0d0e0f10"
 	 **/
-	sscanf(str, "%hx:%lx:%llx:%lx", &data->vhca_id, &data->mkey,
+	sscanf(str, "%hx:%x:%p:%lx", &data->vhca_id, &data->mkey,
 			&data->buf, &data->buf_size);
 	data->access_key_sz = str_size - sizeof("0102:01020304:0102030405060708:01020304") - 1;
 	memcpy(data->access_key, &str[sizeof("0102:01020304:0102030405060708:01020304")], data->access_key_sz);

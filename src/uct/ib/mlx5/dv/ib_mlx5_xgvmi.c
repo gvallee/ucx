@@ -4,7 +4,7 @@
 * See file LICENSE for terms.
 */
 
-#include "ib_exp_xgvmi_mkey.h"
+#include "ib_mlx5_xgvmi_mkey.h"
 
 #ifdef HAVE_CONFIG_H
 #  include "config.h"

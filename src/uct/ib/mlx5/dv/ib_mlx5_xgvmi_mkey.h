@@ -7,9 +7,9 @@
 #include <unistd.h>
 #include <netdb.h>
 #include <arpa/inet.h> // inet_addr
-#include "devx_prm.h"
-#include "mlx5_ifc.h"
-#include "cgmk_utils.h"
+#include "ib_mlx5_xgvmi_prm.h"
+#include "ib_mlx5_ifc.h"
+#include "ib_mlx5_xgvmi_utils.h"
 
 #define MLX5_GENERAL_OBJ_TYPE_MKEY 0xff01
 #define MLX5_MKEY_ACCESS_MODE_CROSSING_VHCA 0x6
@@ -30,21 +30,21 @@ int
 query_hca_caps(struct ibv_context *context, enum mlx5_cap_type cap_type, uint32_t *hca_cur)
 {
 	int ret;
-	uint32_t in[DEVX_ST_SZ_DW(query_hca_cap_in)] = {0};
-	uint32_t out[DEVX_ST_SZ_DW(query_hca_cap_out)] = {0};
+	char in[UCT_IB_MLX5DV_ST_SZ_BYTES(query_hca_cap_in)] = {};
+	char out[UCT_IB_MLX5DV_ST_SZ_BYTES(query_hca_cap_out)] = {};
 	uint16_t opmod = (cap_type << 1) | (1 & 0x01); // HCA_CAP_OPMOD_GET_CUR == 1
 	void *hca_caps;
 
-	DEVX_SET(query_hca_cap_in, in, opcode, MLX5_CMD_OP_QUERY_HCA_CAP);
-	DEVX_SET(query_hca_cap_in, in, op_mod, opmod);
+	UCT_IB_MLX5DV_SET(query_hca_cap_in, in, opcode, UCT_IB_MLX5_CMD_OP_QUERY_HCA_CAP);
+	UCT_IB_MLX5DV_SET(query_hca_cap_in, in, op_mod, opmod);
 	ret = mlx5dv_devx_general_cmd(context, in, sizeof(in), out, sizeof(out));
 	if (ret) {
 		fprintf(stderr, "QUERY_HCA_CAP: type(%x) opmode(cur) Failed(%d)\n",
 				MLX5_CAP_GENERAL, ret);
 		return -1;
 	}
-	hca_caps = DEVX_ADDR_OF(query_hca_cap_out, out, capability);
-	memcpy(hca_cur, hca_caps, DEVX_UN_SZ_BYTES(hca_cap_union));
+	hca_caps = UCT_IB_MLX5DV_ADDR_OF(query_hca_cap_out, out, capability);
+	memcpy(hca_cur, hca_caps, UCT_IB_MLX5DV_UN_SZ_BYTES(hca_cap_union));
 	return 0;
 }
 
@@ -80,6 +80,14 @@ create_cgmk_mkey(struct ibv_pd *pd, void *buf, size_t buf_sz)
 {
 	int ret;
 	struct cgmk_mkey *out_mkey = (struct cgmk_mkey*)calloc(1, sizeof(struct cgmk_mkey));
+	struct mlx5dv_obj *pd_obj = &(struct mlx5dv_obj){
+		.pd.in = pd,
+		.pd.out = &(struct mlx5dv_pd){0},
+	};
+	uint32_t in[UCT_IB_MLX5DV_ST_SZ_BYTES(create_mkey_in)] = {0};
+	uint32_t out[UCT_IB_MLX5DV_ST_SZ_BYTES(create_mkey_out)] = {0};
+	void *mkc;
+
 	out_mkey->context = pd->context;
 	out_mkey->addr = buf;
 	out_mkey->length = buf_sz;
@@ -91,19 +99,11 @@ create_cgmk_mkey(struct ibv_pd *pd, void *buf, size_t buf_sz)
 	}
 
 	// Cast pd to dv
-	struct mlx5dv_obj *pd_obj = &(struct mlx5dv_obj){
-		.pd.in = pd,
-		.pd.out = &(struct mlx5dv_pd){0},
-	};
 	ret = mlx5dv_init_obj(pd_obj, MLX5DV_OBJ_PD);
 	if (ret) {
 		fprintf(stderr, "Not able to expose pdn from pd.\n");
 		return NULL;
 	}   
-
-	uint32_t in[DEVX_ST_SZ_DW(create_mkey_in)] = {0};
-	uint32_t out[DEVX_ST_SZ_DW(create_mkey_out)] = {0};
-	void *mkc;
 
 	DEVX_SET(create_mkey_in, in, opcode, MLX5_CMD_OP_CREATE_MKEY);
 	DEVX_SET(create_mkey_in, in, translations_octword_actual_size, 1);
