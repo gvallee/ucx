@@ -41,6 +41,10 @@ SUBDIRS = \
 	src/uct \
 	src/ucp
 
+if DPA_OFFLOAD_ENABLED
+SUBDIRS += src/libdpaoffload
+endif
+
 if HAVE_UCG
 SUBDIRS += $(UCG_SUBDIR)
 endif

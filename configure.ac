@@ -59,6 +59,11 @@ AC_PREFIX_DEFAULT([ucx_prefix])
 top_top_srcdir=$srcdir
 AC_SUBST(top_top_srcdir)
 
+cd $srcdir
+UCX_TOP_SRCDIR="`pwd`"
+AC_SUBST(UCX_TOP_SRCDIR)
+cd -
+
 MAJOR_VERSION=ucx_ver_major
 MINOR_VERSION=ucx_ver_minor
 PATCH_VERSION=ucx_ver_patch
@@ -334,6 +339,83 @@ AS_IF([test "x$with_docs_only" = xyes],
     AM_CONDITIONAL([HAVE_EXAMPLES], [test "x$enable_examples" = "xyes"])
     ]) # Docs only
 
+      #
+      # DPA offload
+      #
+      dnl Check if DPA offload is requested
+      LDO_INC_DIR=
+
+      dpa_offload_enabled=no
+      AC_MSG_CHECKING([DPA offload request])
+      AC_ARG_ENABLE(dpaoffload,
+                  [AS_HELP_STRING([--enable-dpaoffload],
+                  [enable DPA offload, default: no]),
+                  case "${enableval}" in
+                        yes) debug=true ;;
+                        no)  debug=false ;;
+                        *)   AC_MSG_ERROR([bad value ${enableval} for --enable-dpaoffload]) ;;
+                  esac],
+                  [dpaoffload=false])
+      if test "x$enable_dpaoffload" = xyes; then
+            dpa_offload_enabled=yes
+            UCX_DPA_OFFLOAD_REQUESTED="yes"
+            AC_MSG_RESULT([yes])
+            AC_DEFINE([HAVE_UCX_DPA_OFFLOAD], 1, [DPA offload is enabled])
+            LDO_EXTERNAL_DPA_CODE_DIR=$UCX_TOP_SRCDIR/src/dpa
+            AC_SUBST([LDO_EXTERNAL_DPA_CODE_DIR])
+            LDO_INC="-I$UCX_TOP_SRCDIR/src/libdpaoffload/include -I$UCX_TOP_SRCDIR/src/libdpaoffload/common"
+            AC_SUBST([LDO_INC])
+            CPPFLAGS_save="$CPPFLAGS"
+            AC_SUBST([CPPFLAGS],["$LDO_INC $CPPFLAGS_save"])
+      else
+            AC_MSG_RESULT([no])
+      fi
+
+      dnl# DOCA
+
+      AC_MSG_CHECKING([DOCA installation])
+      AC_ARG_WITH(doca,
+                  [AS_HELP_STRING([--with-doca=PATH],
+                  [Absolute path to the install directory for DOCA])],
+                  [DOCA_INSTALL_DIR="${withval}"],
+                  [DOCA_INSTALL_DIR=""])
+
+      if test "x$DOCA_INSTALL_DIR" = "x" ; then
+      AC_MSG_RESULT([no])
+      else
+      if test "x$UCX_DPA_OFFLOAD_REQUESTED" = "xyes" ; then
+            AC_MSG_RESULT([yes])
+            FLEXIO_INC="-I$DOCA_INSTALL_DIR/opt/mellanox/flexio/include"
+            FLEXIO_LIB="-L$DOCA_INSTALL_DIR/opt/mellanox/flexio/lib"
+      fi
+      fi
+      AC_SUBST([DOCA_INSTALL_DIR])
+
+      dnl# Check for dpacc
+
+      AC_CHECK_PROG(DPACC_CHECK, dpacc, yes, no, path = $DOCA_INSTALL_DIR/opt/mellanox/doca/tools)
+      AS_IF([test x"$DPACC_CHECK" != x"yes"], [AC_MSG_RESULT([dpacc not found])])
+      DPACC_BIN=$DOCA_INSTALL_DIR/opt/mellanox/doca/tools/dpacc
+      AC_SUBST([DPACC_BIN])
+
+      dnl# Check for FlexIO
+
+      if test "x$UCX_DPA_OFFLOAD_REQUESTED" = "xyes" ; then
+            CPPFLAGS_save="$CPPFLAGS"
+            LIBS_save="$LIBS"
+            FLEXIO_INCLUDE_DIR="$DOCA_INSTALL_DIR/opt/mellanox/flexio/include"
+            AC_SUBST([CPPFLAGS],["$FLEXIO_INC $CPPFLAGS_save"])
+            AC_SUBST([LIBS],["$FLEXIO_LIB $LIBS_save -lflexio"])
+            AC_CHECK_HEADERS([libflexio/flexio.h],[AC_SUBST(HAVE_FLEXIO)],AC_MSG_ERROR([Cannot find FLEXIO]))
+            AC_CHECK_LIB([flexio],[flexio_app_create],,AC_MSG_ERROR([Cannot use flexIO lib]))
+            AC_SUBST([FLEXIO_INCLUDE_DIR])
+      fi
+
+      # Propagate configuration into makefiles
+      AM_CONDITIONAL([TL_NVAT_ENABLED], [test "$tl_nvat_enabled" = "yes"])
+      AM_CONDITIONAL([DPA_OFFLOAD_ENABLED], [test "$dpa_offload_enabled" = "yes"])
+      AM_CONDITIONAL([LDO_EXTERNAL_DPA_CODE_ENABLED], [test "$dpa_offload_enabled" = "yes"])
+
 #
 # Print which transports are built
 #
@@ -388,6 +470,13 @@ AC_CONFIG_FILES([
 
 AC_CONFIG_FILES([test/mpi/run_mpi.sh], [chmod a+x test/mpi/run_mpi.sh])
 ])
+
+if test "x$UCX_DPA_OFFLOAD_REQUESTED" = "xyes" ; then
+  AC_CONFIG_FILES([src/libdpaoffload/Makefile
+                   src/libdpaoffload/include/Makefile
+                   src/libdpaoffload/device/Makefile
+                   src/libdpaoffload/host/Makefile])
+fi
 
 
 AC_OUTPUT

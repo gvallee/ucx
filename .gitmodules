@@ -2,3 +2,6 @@
 	path = src/ucg
 	url = https://github.com/openucx/xucg.git
 	branch = master
+[submodule "src/libdpaoffload"]
+	path = src/libdpaoffload
+	url = ssh://git@gitlab-master.nvidia.com:12051/nbu-advanced-projects/libdpaoffload.git
